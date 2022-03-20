@@ -10,6 +10,7 @@
 import random
 import os
 import sys
+import shutil
 import xml.dom.minidom 
 from core import Util
 from core import network_map_data_structures
@@ -382,18 +383,23 @@ class target_vehicles_generator:
         density =  latest_release_time / float(num_random_vehicles)
         density = int(density * 100)/100.0
         #copy the file randomTrips.py to the current directory
-        command_str = "cp $SUMO_HOME/tools/randomTrips.py ./"
-        if os.system(command_str) != 0:
+        src_path = os.path.join(tools, 'randomTrips.py')
+        try:
+            shutil.copy2(src_path, os.getcwd())
+        except:
             print("ERROR: Failed to copy randomTrips.py to current directory.")
             return None
         #invoke randomTrips.py
-        command_str = "./randomTrips.py -n "+net_xml_file+" -e 50 -p "+str(density) +" -r "+target_xml_file
+        command_str = "python ./randomTrips.py -n "+net_xml_file + \
+            " -e 50 -p "+str(density) + " -r "+target_xml_file
         if os.system(command_str) != 0:
             print("ERROR: Failed to invoke randomTrips.py.")
             return None
         #delete randomTrips.py
-        command_str = "rm ./randomTrips.py"
-        if os.system(command_str) != 0:
+        file_path = "randomTrips.py"
+        try:
+            os.remove(file_path)
+        except:
             print("ERROR: Failed to remove randomTrips.py.")
             return None
         #insert the generated vehicles into the xml file
