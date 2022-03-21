@@ -9,6 +9,7 @@ from xml.dom.minidom import parse, parseString
 from core.Util import *
 from controller.RouteController import *
 from controller.DijkstraController import DijkstraPolicy
+from controller.ModifiedDijkstraController import ModifiedDijkstraPolicy
 from core.target_vehicles_generation_protocols import *
 
 if 'SUMO_HOME' in os.environ:
@@ -49,44 +50,69 @@ def get_controlled_vehicles(route_filename, connection_info, \
 
     return vehicle_dict
 
-def test_dijkstra_policy(vehicles):
+
+def test_dijkstra_policy(vehicles, init_connection_info):
     print("Testing Dijkstra's Algorithm Route Controller")
     scheduler = DijkstraPolicy(init_connection_info)
-    run_simulation(scheduler, vehicles)
+    run_simulation(scheduler, vehicles, init_connection_info)
 
 
-def run_simulation(scheduler, vehicles):
+def test_modified_dijkstra_policy(vehicles, init_connection_info):
+    print("Testing Modified Dijkstra's Algorithm Route Controller")
+    scheduler = ModifiedDijkstraPolicy(init_connection_info)
+    run_simulation(scheduler, vehicles, init_connection_info)
+
+
+def run_simulation(scheduler, vehicles, init_connection_info):
 
     simulation = StrSumo(scheduler, init_connection_info, vehicles)
 
-    traci.start([sumo_binary, "-c", "./configurations/myconfig.sumocfg", \
-                 "--tripinfo-output", "./configurations/trips.trips.xml", \
+    traci.start([sumo_binary, "-c", "./configurations/myconfig.sumocfg",
+                 "--tripinfo-output", "./configurations/trips.trips.xml",
                  "--fcd-output", "./configurations/testTrace.xml"])
 
     total_time, end_number, deadlines_missed = simulation.run()
-    print("Average timespan: {}, total vehicle number: {}".format(str(total_time/end_number),\
-        str(end_number)))
+    print("Average timespan: {}, total vehicle number: {}".format(str(total_time/end_number),
+                                                                  str(end_number)))
     print(str(deadlines_missed) + ' deadlines missed.')
 
-if __name__ == "__main__":
-    sumo_binary = checkBinary('sumo-gui')
-    # sumo_binary = checkBinary('sumo')#use this line if you do not want the UI of SUMO
 
-    # parse config file for map file name
-    dom = parse("./configurations/myconfig.sumocfg")
-
-    net_file_node = dom.getElementsByTagName('net-file')
-    net_file_attr = net_file_node[0].attributes
-
-    net_file = net_file_attr['value'].nodeValue
+def execute(net_file, route_file, test_runner):
     init_connection_info = ConnectionInfo("./configurations/"+net_file)
-
-    route_file_node = dom.getElementsByTagName('route-files')
-    route_file_attr = route_file_node[0].attributes
-    route_file = "./configurations/"+route_file_attr['value'].nodeValue
-    vehicles = get_controlled_vehicles(route_file, init_connection_info, 10, 50)
-    #print the controlled vehicles generated
+    vehicles = get_controlled_vehicles(
+        route_file, init_connection_info, 10, 50)
+    # print the controlled vehicles generated
     for vid, v in vehicles.items():
-        print("id: {}, destination: {}, start time:{}, deadline: {};".format(vid, \
-            v.destination, v.start_time, v.deadline))
-    test_dijkstra_policy(vehicles)
+        print("id: {}, destination: {}, start time:{}, deadline: {};".format(vid,
+                                                                             v.destination, v.start_time, v.deadline))
+    test_runner(vehicles, init_connection_info)
+    traci.close()
+
+
+def run_experiment(net_file, route_file):
+
+    # baseline (Dijkstra)
+    execute(net_file, route_file, test_dijkstra_policy)
+
+    # modified Dijkstra
+    execute(net_file, route_file, test_modified_dijkstra_policy)
+
+
+if __name__ == "__main__":
+    # sumo_binary = checkBinary('sumo-gui')
+    sumo_binary = checkBinary('sumo')#use this line if you do not want the UI of SUMO
+
+    experiments = ['./configurations/myconfig.sumocfg']
+    for experiment in experiments:
+        # parse config file for map file name
+        dom = parse(experiment)
+
+        net_file_node = dom.getElementsByTagName('net-file')
+        net_file_attr = net_file_node[0].attributes
+
+        net_file = net_file_attr['value'].nodeValue
+
+        route_file_node = dom.getElementsByTagName('route-files')
+        route_file_attr = route_file_node[0].attributes
+        route_file = "./configurations/"+route_file_attr['value'].nodeValue
+        run_experiment(net_file, route_file)
