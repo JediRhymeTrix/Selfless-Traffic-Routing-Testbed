@@ -9,7 +9,7 @@ from xml.dom.minidom import parse, parseString
 from core.Util import *
 from controller.RouteController import *
 from controller.DijkstraController import DijkstraPolicy
-from controller.ModifiedDijkstraController import ModifiedDijkstraPolicy
+from ModifiedDijkstraController import ModifiedDijkstraPolicy
 from core.target_vehicles_generation_protocols import *
 
 if 'SUMO_HOME' in os.environ:
